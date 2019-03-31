@@ -1,0 +1,5 @@
+[rhel75]
+name=rhel75
+baseurl=http://download.devel.redhat.com/released/RHEL-7/7.5/Server/x86_64/os/
+enabled=1
+gpgcheck=0

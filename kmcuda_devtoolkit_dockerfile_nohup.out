@@ -1,0 +1,95 @@
+Tue Feb 26 06:14:06 UTC 2019
+Sending build context to Docker daemon 1.406 GB
+Step 1/30 : FROM registry.access.redhat.com/rhel7.5
+ ---> 7b875638cfd8
+Step 2/30 : COPY MLCC_Repos/RHEL7.5/ /etc/yum.repos.d/
+ ---> Using cache
+ ---> ea8abe8f1942
+Step 3/30 : RUN yum -y -v -t install "https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"; yum clean all; yum -y update; cd /var/cache && /bin/rm -rf dnf yum
+ ---> Using cache
+ ---> 5c32f9459e55
+Step 4/30 : RUN echo -e '#!/bin/bash \nset -vx \nfor (( TRY=1; TRY<=11; TRY++ )); do \n    yum -y -v install $@ \n    result=$? \n    for PKG in $@ ; do \n        yum list installed | grep "^$PKG" \n        (( result += $? )) \n    done \n    if (( $result == 0 )); then \n        /bin/rm -rf /var/cache/yum \n        /bin/rm -rf /var/cache/dnf \n        exit 0 \n    fi \n    sleep 10 \ndone \nexit 1 \n' >> /tmp/yum_install.sh; chmod +x /tmp/yum_install.sh; /tmp/yum_install.sh bzip2 findutils gcc gcc-c++ gcc-gfortran git gzip make patch pciutils unzip vim-enhanced wget xz zip; cd /tmp && wget "https://cmake.org/files/v3.11/cmake-3.11.3.tar.gz" && tar -xf cmake*.gz; cd /tmp/cmake-3.11.3 && ./bootstrap && make -j`getconf _NPROCESSORS_ONLN` && make install; cd /tmp && /bin/rm -rf /tmp/cmake*; cmake --version
+ ---> Using cache
+ ---> 544671ba0981
+Step 5/30 : COPY MLCC_Repos/NVIDIA_PKGS/cudnn-8.0-linux-x64*.tgz MLCC_Repos/NVIDIA_PKGS/nccl*cuda8.0_x86_64.txz /tmp/
+ ---> Using cache
+ ---> 2df5f9a3e8bd
+Step 6/30 : RUN echo -e 'exec > /etc/yum.repos.d/cuda.repo \necho [cuda] \necho name=cuda \nif [ -f /etc/fedora-release ]; then \necho baseurl="http://developer.download.nvidia.com/compute/cuda/repos/fedora27/x86_64" \nelse \necho baseurl="http://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64" \nfi \necho enabled=1 \necho gpgcheck=0 \n' >> /tmp/Make_CUDA_Repo.sh; sh /tmp/Make_CUDA_Repo.sh; /tmp/yum_install.sh cuda-8-0; cd /tmp && tar -xvf cudnn*.tgz; cd /tmp/cuda && mv include/cudnn.h /usr/local/cuda/include && mv lib64/lib* /usr/local/cuda/lib64; cd /tmp && /bin/rm -rf /tmp/cud*; cd /tmp && tar -xvf nccl*.txz; cd /tmp/nccl*x86_64 && mv NCCL-SLA.txt /usr/local/cuda && mv include/nccl.h /usr/local/cuda/include && mv lib/lib* /usr/local/cuda/lib64; mkdir -p /usr/local/nccl && cd /usr/local/nccl && ln -s /usr/local/cuda/NCCL-SLA.txt NCCL-SLA.txt && ln -s /usr/local/cuda/include include && ln -s /usr/local/cuda/lib64 lib; cd /tmp && /bin/rm -rf /tmp/nccl*; ldconfig; echo -e '\nexport CUDA_HOME=/usr/local/cuda \nexport CUDA_PATH=/usr/local/cuda \nexport PATH=/usr/local/cuda/bin:/usr/local/bin:/usr/bin:${PATH} \nexport LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/lib:$LD_LIBRARY_PATH \n\n' >> ~/.bashrc;
+ ---> Using cache
+ ---> f5b0e48119b0
+Step 7/30 : ENV CUDA_VERSION "8.0" CUDA_HOME "/usr/local/cuda" CUDA_PATH "/usr/local/cuda" CUDNN_VERSION "7.1" NCCL_VERSION "2.2.12" PATH "/usr/local/cuda/bin:/usr/local/bin:/usr/bin:${PATH:+:${PATH}}" LD_LIBRARY_PATH "/usr/local/cuda/lib64:/usr/local/lib:${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+ ---> Using cache
+ ---> 3efc0c8f4a12
+Step 8/30 : RUN cd /usr/local && /bin/rm -rf lib64 && ln -s lib lib64; if [ -x /usr/bin/python3 ]; then /tmp/yum_install.sh python3-pip python3-devel python3-setuptools; cd /usr/bin && ln -s python3 python && ln -s pip3 pip; else /tmp/yum_install.sh bzip2-devel libdb4-devel expat-devel gdbm-devel libpcap-devel ncurses-devel openssl-devel readline-devel sqlite-devel tk-devel xz-devel zlib-devel; cd /tmp && wget "https://www.python.org/ftp/python/3.6.5/Python-3.6.5.tar.xz" && tar -xf Python*.xz; cd /tmp/Python-3.6.5 && ./configure --enable-optimizations --enable-shared --prefix=/usr/local --with-ensurepip=install LDFLAGS="-Wl,-rpath /usr/local/lib" && make -j`getconf _NPROCESSORS_ONLN` && make install; cp -a /usr/local/include/python* /usr/include/; cd /usr/local/bin && ln -s python3.6 python && ln -s pip3.6 pip; fi; cd /var/cache && /bin/rm -rf dnf yum; pip -v install --upgrade pip setuptools;
+ ---> Using cache
+ ---> a2fccabba96f
+Step 9/30 : RUN yum-config-manager --enable rhel-server-rhscl-7-rpms
+ ---> Using cache
+ ---> 048562b2106b
+Step 10/30 : RUN yum -y -v -t  install devtoolset-3
+ ---> Using cache
+ ---> 4a85ef98cb1c
+Step 11/30 : RUN echo -e "\nsource /opt/rh/devtoolset-3/enable" >> .bashrc
+ ---> Using cache
+ ---> 3686e11586a3
+Step 12/30 : RUN cat .bashrc
+ ---> Using cache
+ ---> d55fde848790
+Step 13/30 : RUN gcc --version
+ ---> Using cache
+ ---> 5a20e36f271e
+Step 14/30 : RUN gcc --version
+ ---> Using cache
+ ---> 6bb323d53145
+Step 15/30 : RUN pip -v install scikit-learn
+ ---> Using cache
+ ---> 5e856dd56264
+Step 16/30 : RUN pip -v install matplotlib
+ ---> Using cache
+ ---> f0fb7582edd1
+Step 17/30 : RUN pip -v install pycuda
+ ---> Using cache
+ ---> 851653bee644
+Step 18/30 : RUN mkdir -p /root/diane/kmeancuda;
+ ---> Using cache
+ ---> 2063a41635f9
+Step 19/30 : COPY pythontest.py /root/diane/kmeancuda/
+ ---> Using cache
+ ---> 90c963d85438
+Step 20/30 : RUN pip list installed
+ ---> Using cache
+ ---> 6db4f1e1a22a
+Step 21/30 : ENV CUDA_TOOLKIT_ROOT_DIR /usr/local/cuda-8.0
+ ---> Using cache
+ ---> c32baa41295d
+Step 22/30 : RUN source .bashrc; source /opt/rh/devtoolset-3/enable; CUDA_ARCH=60 pip install git+https://github.com/src-d/kmcuda.git#subdirectory=src
+ ---> Using cache
+ ---> 47b8d6fcebfd
+Step 23/30 : RUN pip -v install numpy
+ ---> Using cache
+ ---> 540f0440f644
+Step 24/30 : RUN pip -v install tensorflow
+ ---> Using cache
+ ---> 533b9e3fb22c
+Step 25/30 : RUN python -c 'import numpy as np'
+ ---> Using cache
+ ---> c8ee5be97937
+Step 26/30 : RUN python -c 'import tensorflow as tf'
+ ---> Using cache
+ ---> 46b8711df1be
+Step 27/30 : RUN pip list installed
+ ---> Using cache
+ ---> 3c87d498b645
+Step 28/30 : RUN gcc --version
+ ---> Using cache
+ ---> c72e4264e87f
+Step 29/30 : CMD python /root/diane/kmeancuda/pythontest.py
+ ---> Running in e7d0f6db1419
+ ---> 2140bd421f97
+Removing intermediate container e7d0f6db1419
+Step 30/30 : EXPOSE 6006
+ ---> Running in 72305724ef75
+ ---> d1033a0a7931
+Removing intermediate container 72305724ef75
+Successfully built d1033a0a7931
+Tue Feb 26 06:14:12 UTC 2019

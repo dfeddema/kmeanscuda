@@ -1,0 +1,56 @@
+# mlcc -i RHEL7.5,CUDA9.2,Python3,Keras,TensorFlow
+# mlcc version: 20180616a: Jun 16 2018
+
+FROM registry.access.redhat.com/rhel7.5
+
+
+COPY MLCC_Repos/RHEL7.5/ /etc/yum.repos.d/ 
+RUN yum -y -v -t install "https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"; yum clean all; yum -y update; cd /var/cache && /bin/rm -rf dnf yum
+
+RUN echo -e '#!/bin/bash \nset -vx \nfor (( TRY=1; TRY<=11; TRY++ )); do \n    yum -y -v install $@ \n    result=$? \n    for PKG in $@ ; do \n        yum list installed | grep "^$PKG" \n        (( result += $? )) \n    done \n    if (( $result == 0 )); then \n        /bin/rm -rf /var/cache/yum \n        /bin/rm -rf /var/cache/dnf \n        exit 0 \n    fi \n    sleep 10 \ndone \nexit 1 \n' >> /tmp/yum_install.sh; chmod +x /tmp/yum_install.sh; /tmp/yum_install.sh bzip2 findutils gcc gcc-c++ gcc-gfortran git gzip make patch pciutils unzip vim-enhanced wget xz zip; cd /tmp && wget "https://cmake.org/files/v3.11/cmake-3.11.3.tar.gz" && tar -xf cmake*.gz; cd /tmp/cmake-3.11.3 && ./bootstrap && make -j`getconf _NPROCESSORS_ONLN` && make install; cd /tmp && /bin/rm -rf /tmp/cmake*; cmake --version
+
+COPY MLCC_Repos/NVIDIA_PKGS/cudnn-8.0-linux-x64*.tgz MLCC_Repos/NVIDIA_PKGS/nccl*cuda8.0_x86_64.txz /tmp/ 
+RUN echo -e 'exec > /etc/yum.repos.d/cuda.repo \necho [cuda] \necho name=cuda \nif [ -f /etc/fedora-release ]; then \necho baseurl="http://developer.download.nvidia.com/compute/cuda/repos/fedora27/x86_64" \nelse \necho baseurl="http://developer.download.nvidia.com/compute/cuda/repos/rhel7/x86_64" \nfi \necho enabled=1 \necho gpgcheck=0 \n' >> /tmp/Make_CUDA_Repo.sh; sh /tmp/Make_CUDA_Repo.sh; /tmp/yum_install.sh cuda-8-0; cd /tmp && tar -xvf cudnn*.tgz; cd /tmp/cuda && mv include/cudnn.h /usr/local/cuda/include && mv lib64/lib* /usr/local/cuda/lib64; cd /tmp && /bin/rm -rf /tmp/cud*; cd /tmp && tar -xvf nccl*.txz; cd /tmp/nccl*x86_64 && mv NCCL-SLA.txt /usr/local/cuda && mv include/nccl.h /usr/local/cuda/include && mv lib/lib* /usr/local/cuda/lib64; mkdir -p /usr/local/nccl && cd /usr/local/nccl && ln -s /usr/local/cuda/NCCL-SLA.txt NCCL-SLA.txt && ln -s /usr/local/cuda/include include && ln -s /usr/local/cuda/lib64 lib; cd /tmp && /bin/rm -rf /tmp/nccl*; ldconfig; echo -e '\nexport CUDA_HOME=/usr/local/cuda \nexport CUDA_PATH=/usr/local/cuda \nexport PATH=/usr/local/cuda/bin:/usr/local/bin:/usr/bin:${PATH} \nexport LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/lib:$LD_LIBRARY_PATH \n\n' >> ~/.bashrc; 
+ENV CUDA_VERSION="8.0" CUDA_HOME="/usr/local/cuda" CUDA_PATH="/usr/local/cuda" CUDNN_VERSION="7.1" NCCL_VERSION="2.2.12" PATH="/usr/local/cuda/bin:/usr/local/bin:/usr/bin:${PATH:+:${PATH}}" LD_LIBRARY_PATH="/usr/local/cuda/lib64:/usr/local/lib:${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+
+RUN cd /usr/local && /bin/rm -rf lib64 && ln -s lib lib64; if [ -x /usr/bin/python3 ]; then /tmp/yum_install.sh python3-pip python3-devel python3-setuptools; cd /usr/bin && ln -s python3 python && ln -s pip3 pip; else /tmp/yum_install.sh bzip2-devel libdb4-devel expat-devel gdbm-devel libpcap-devel ncurses-devel openssl-devel readline-devel sqlite-devel tk-devel xz-devel zlib-devel; cd /tmp && wget "https://www.python.org/ftp/python/3.6.5/Python-3.6.5.tar.xz" && tar -xf Python*.xz; cd /tmp/Python-3.6.5 && ./configure --enable-optimizations --enable-shared --prefix=/usr/local --with-ensurepip=install LDFLAGS="-Wl,-rpath /usr/local/lib" && make -j`getconf _NPROCESSORS_ONLN` && make install; cp -a /usr/local/include/python* /usr/include/; cd /usr/local/bin && ln -s python3.6 python && ln -s pip3.6 pip; fi; cd /var/cache && /bin/rm -rf dnf yum; pip -v install --upgrade pip setuptools;
+
+
+RUN yum-config-manager --enable rhel-server-rhscl-7-rpms
+RUN yum -y -v -t  install devtoolset-3 
+RUN echo -e "\nsource /opt/rh/devtoolset-3/enable" >> .bashrc
+RUN cat .bashrc
+#RUN source /opt/rh/devtoolset-3/enable /bin/bash 
+#RUN scl enable devtoolset-3 bash
+RUN  gcc --version
+
+
+RUN gcc --version
+
+RUN pip -v install scikit-learn 
+RUN pip -v install matplotlib 
+RUN pip -v install pycuda 
+
+#RUN mkdir -p /root/diane/kmeancuda;
+COPY pythontest.py / 
+COPY kmeans.sh /
+
+RUN pip list installed
+
+ENV CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda-8.0
+
+RUN source .bashrc; source /opt/rh/devtoolset-3/enable; CUDA_ARCH=60 pip install git+https://github.com/src-d/kmcuda.git#subdirectory=src
+ 
+ 
+RUN pip -v install numpy 
+RUN pip -v install tensorflow
+RUN python -c 'import numpy as np'
+RUN python -c 'import tensorflow as tf'
+
+RUN pip list installed 
+RUN gcc --version
+#CMD python /root/diane/kmeancuda/pythontest.py
+ENTRYPOINT ["kmeans.sh"]
+
+EXPOSE 6006 
+

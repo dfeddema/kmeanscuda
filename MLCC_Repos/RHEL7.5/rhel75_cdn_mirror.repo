@@ -1,0 +1,6 @@
+[rhel75_cdn_mirror]
+name=rhel75_cdn_mirror
+# baseurl=http://cdn.rcm-internal.redhat.com/content/eus/rhel/server/7/7.5/x86_64/os/
+baseurl=http://pulp.dist.prod.ext.phx2.redhat.com/content/eus/rhel/server/7/7.5/x86_64/os/
+enabled=1
+gpgcheck=0

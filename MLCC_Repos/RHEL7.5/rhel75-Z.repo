@@ -1,0 +1,5 @@
+[rhel75-Z]
+name=rhel75-Z
+baseurl=http://download.devel.redhat.com/rel-eng/repos/rhel-7.5-z/x86_64/
+enabled=0
+gpgcheck=0
